@@ -1,83 +1,11 @@
-# see: https://github.com/openai/gym/blob/master/gym/envs/toy_text/frozen_lake.py
-
 import numpy as np
-
-MAPS = {
-    "4x4": {
-        "width": 4,
-        "field": [
-            "s...",
-            ".x.x",
-            "...x",
-            "x..f"
-        ]
-    },
-    "8x8": {
-        "width": 8,
-        "field": [
-            "s.......",
-            "........",
-            "...x....",
-            ".....x..",
-            "...x....",
-            ".xx...x.",
-            ".x..x.x.",
-            "...x...f"
-        ]},
-    "classic": {
-        "width": 4,
-        "field": [
-            "...f",
-            ".o.x",
-            "s..."
-        ]}
-}
-
-
-class Environment:
-    def __init__(self, world, win_reward=1.0, death_reward=-1.0):
-        self.field = ''.join(world["field"])
-        self.height = len(world["field"])
-        self.width = world["width"]
-        self.win_reward = win_reward
-        self.death_reward = death_reward
-
-    def print_game(self):
-        for y in range(self.height):
-            for x in range(self.width):
-                print(self.field[y * self.width + x], end='')
-            print()
-
-    def step(self, state, action):
-        w, h = self.width, self.height
-
-        x, y = state % w, state // w
-        if action == '→':
-            x += 1
-        elif action == '←':
-            x -= 1
-        elif action == '↑':
-            y -= 1
-        else:
-            y += 1
-        if (0 <= x < w) and (0 <= y < h):
-            ix = y * w + x
-            if self.field[ix] == 'f':
-                return ix, self.win_reward, True
-            elif self.field[ix] == 'x':
-                return ix, self.death_reward, True,
-            elif self.field[ix] == 'o':
-                return state, 0, False
-            else:
-                return ix, 0, False
-        else:
-            return state, 0, False
+from maze import MAPS, Environment
 
 
 class Agent:
     actions = ['←', '→', '↑', '↓']
 
-    def __init__(self, env, p=1.0, lr=0.8, y=0.95, step_cost=.0, living_cost=.0):
+    def __init__(self, env, p=1.0, lr=0.8, y=0.95, step_cost=.0, living_cost=.0, episode_length=100):
         self.env = env
         self.lr = lr
         self.y = y
@@ -92,6 +20,8 @@ class Agent:
         }
         self.Q = np.zeros((env.width * env.height, len(Agent.actions)))
         self.s0 = env.field.index('s')
+        self.episode_length = episode_length
+        self.rewards = []
 
     def step(self, state, action):
         # simulating Markov Process, desired action happens with probability p
@@ -111,21 +41,24 @@ class Agent:
 
     def run_episode(self):
         s = self.s0
-        for j in range(100):
-            a = np.argmax(self.Q[s, :] + np.random.randn(1, len(Agent.actions)) * (1 / (i + 1)))
+        episode_number = len(self.rewards)
+        self.rewards.append(.0)
+        for j in range(self.episode_length):
+            a = np.argmax(self.Q[s, :] + np.random.randn(1, len(Agent.actions)) * (1 / (episode_number + 1)))
             s1, r, over = self.step(s, Agent.actions[a])
             if s != s1:
                 r -= self.step_cost
             r -= self.living_cost
             self.Q[s, a] = self.Q[s, a] + self.lr * (r + self.y * np.max(self.Q[s1, :]) - self.Q[s, a])
             s = s1
+            self.rewards[-1] += r
             if over:
                 break
 
 
 np.random.seed(42)
 env = Environment(world=MAPS["classic"])
-agent = Agent(env=env, p=1.0, step_cost=.0)
+agent = Agent(env=env, p=0.9, step_cost=.01)
 
 num_episodes = 500
 for i in range(num_episodes):
@@ -134,3 +67,5 @@ for i in range(num_episodes):
 env.print_game()
 print()
 agent.print_policy()
+
+print(agent.rewards)
