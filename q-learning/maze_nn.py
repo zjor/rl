@@ -47,7 +47,7 @@ class Agent:
             hidden=[],
             out_features=len(Agent.actions))
         self.criterion = nn.MSELoss()
-        self.optimizer = torch.optim.Adam(self.nn.parameters(), lr=0.005)
+        self.optimizer = torch.optim.Adam(self.nn.parameters(), lr=0.05)
 
     def step(self, state, action):
         # simulating Markov Process, desired action happens with probability p
@@ -61,6 +61,10 @@ class Agent:
         for y in range(self.env.height):
             for x in range(self.env.width):
                 s = y * self.env.width + x
+                cell = self.env.field[s]
+                if not (cell == '.' or cell == 's'):
+                    print(cell, end='')
+                    continue
                 q_predicted = self._predict_q(s)
                 a = torch.argmax(q_predicted, 0).item()
                 print(Agent.actions[a], end='')
@@ -76,18 +80,10 @@ class Agent:
 
     def _e_greedy_action(self, a, episode):
         eps = (1.0 / (episode + 1))
-        if abs(np.random.randn(1)[0]) < eps:
+        if eps < np.random.rand():
             return np.random.choice(range(len(Agent.actions)))
         else:
             return a
-
-    def get_q_target(self, s, r):
-        targets = []
-        for a in range(len(Agent.actions)):
-            s1, _, _ = self.step(s, Agent.actions[a])
-            q_predicted = self._predict_q(s1)
-            targets.append(r + self.y * torch.max(q_predicted).item())
-        return torch.tensor(targets)
 
     def run_episode(self):
         s = self.s0
@@ -102,7 +98,9 @@ class Agent:
                 r -= self.step_cost
             r -= self.living_cost
 
-            q_target = self.get_q_target(s, r)
+            q_target = q_predicted.clone().detach()
+            q_target[a] = r + self.y * self._predict_q(s1).max().item()
+
             loss = self.criterion(q_predicted, q_target)
             self.losses.append(loss)
 
@@ -119,10 +117,10 @@ class Agent:
 if __name__ == "__main__":
     torch.manual_seed(42)
     np.random.seed(42)
-    env = Environment(world=MAPS["classic"], win_reward=2.0, death_reward=-10.0)
-    agent = Agent(env=env, p=1.0, step_cost=0, episode_length=100)
+    env = Environment(world=MAPS["classic"], win_reward=5.0, death_reward=-10.0)
+    agent = Agent(env=env, p=1.0, step_cost=0.2, episode_length=100)
     agent.print_policy()
-    for i in range(1000):
+    for i in range(10000):
         agent.run_episode()
         if i % 100 == 0:
             print(agent.rewards[-1])
