@@ -141,7 +141,7 @@ class Agent:
             q_target[a] = r + self.y * self._predict_q_target(s1).max().item()
 
             loss = self.criterion(q_predicted, q_target)
-            self.losses.append(loss)
+            self.losses.append(loss.item())
 
             self.optimizer.zero_grad()
             loss.backward()
@@ -170,16 +170,24 @@ class Agent:
 
 
 if __name__ == "__main__":
+    import matplotlib.pyplot as plt
     torch.manual_seed(42)
     np.random.seed(42)
     env = Environment(world=MAPS["classic"], win_reward=5.0, death_reward=-10.0)
-    agent = Agent(env=env, p=1.0, step_cost=0.2, episode_length=100, memory_capacity=100)
+    agent = Agent(env=env, p=1.0, step_cost=0.2, episode_length=100, memory_capacity=1000)
     agent.print_policy()
-    for i in range(100):
+    for i in range(200):
         agent.run_episode()
         if i % 10 == 0:
             print(f"Episode: {i}")
             print(agent.rewards[-1])
-            print(agent.losses[-1].detach().numpy())
-
+            print(agent.losses[-1])
     agent.print_policy()
+
+    plt.subplot(211)
+    plt.grid(True)
+    plt.plot(agent.rewards)
+    plt.subplot(212)
+    plt.grid(True)
+    plt.plot(agent.losses)
+    plt.show()
