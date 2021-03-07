@@ -39,12 +39,20 @@ class Agent:
                 print(Agent.actions[ix], end='')
             print()
 
+    def _e_greedy_action(self, a, episode):
+        eps = (1.0 / (episode + 1))
+        if eps < np.random.rand():
+            return np.random.choice(range(len(Agent.actions)))
+        else:
+            return a
+
     def run_episode(self):
         s = self.s0
         episode_number = len(self.rewards)
         self.rewards.append(.0)
         for j in range(self.episode_length):
-            a = np.argmax(self.Q[s, :] + np.random.randn(1, len(Agent.actions)) * (1 / (episode_number + 1)))
+            a = np.argmax(self.Q[s, :])
+            a = self._e_greedy_action(a, episode_number)
             s1, r, over = self.step(s, Agent.actions[a])
             if s != s1:
                 r -= self.step_cost
@@ -57,10 +65,10 @@ class Agent:
 
 
 np.random.seed(42)
-env = Environment(world=MAPS["classic"])
-agent = Agent(env=env, p=0.9, step_cost=.01)
+env = Environment(world=MAPS["classic"], win_reward=5.0, death_reward=-10.0)
+agent = Agent(env=env, p=1.0, step_cost=0.2, episode_length=100)
 
-num_episodes = 500
+num_episodes = 1000
 for i in range(num_episodes):
     agent.run_episode()
 
