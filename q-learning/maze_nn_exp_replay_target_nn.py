@@ -125,7 +125,7 @@ class Agent:
 
     def _e_greedy_action(self, a, episode):
         eps = (1.0 / (episode + 1))
-        if eps < np.random.rand():
+        if np.random.rand() < eps:
             return np.random.choice(range(len(Agent.actions)))
         else:
             return a

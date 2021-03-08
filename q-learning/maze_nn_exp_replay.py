@@ -114,7 +114,7 @@ class Agent:
 
     def _e_greedy_action(self, a, episode):
         eps = (1.0 / (episode + 1))
-        if eps < np.random.rand():
+        if np.random.rand() < eps:
             return np.random.choice(range(len(Agent.actions)))
         else:
             return a
@@ -157,12 +157,13 @@ class Agent:
 
 
 if __name__ == "__main__":
+    import matplotlib.pyplot as plt
     torch.manual_seed(42)
     np.random.seed(42)
     env = Environment(world=MAPS["classic"], win_reward=5.0, death_reward=-10.0)
-    agent = Agent(env=env, p=1.0, step_cost=0.2, episode_length=100, memory_capacity=100)
+    agent = Agent(env=env, p=1.0, step_cost=0.1, episode_length=100, memory_capacity=100)
     agent.print_policy()
-    for i in range(100):
+    for i in range(1000):
         agent.run_episode()
         if i % 10 == 0:
             print(f"Episode: {i}")
@@ -170,3 +171,7 @@ if __name__ == "__main__":
             print(agent.losses[-1].detach().numpy())
 
     agent.print_policy()
+    plt.grid(True)
+    plt.plot(agent.rewards)
+    plt.show()
+
