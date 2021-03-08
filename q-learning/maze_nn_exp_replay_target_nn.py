@@ -7,7 +7,7 @@ import random
 import torch
 import numpy as np
 from torch import nn
-from maze import MAPS, Environment
+from maze import MAPS, Environment, AbstractAgent
 
 
 class Model(nn.Module):
@@ -52,11 +52,12 @@ class ReplayMemory(object):
         return len(self.memory)
 
 
-class Agent:
+class Agent(AbstractAgent):
     actions = ['←', '→', '↑', '↓']
 
     def __init__(self, env, p=1.0, lr=0.8, y=0.95, step_cost=.0, living_cost=.0, episode_length=100,
-                 memory_capacity=100, batch_size=10, target_update=10):
+                 memory_capacity=100, batch_size=10, target_update=10, eps=0.5, eps_decay=0.999):
+        AbstractAgent.__init__(self, eps, eps_decay)
         self.env = env
         self.lr = lr
         self.y = y
@@ -123,13 +124,6 @@ class Agent:
     def _predict_q_target(self, s):
         return self.target_nn(self._encode_state(s))
 
-    def _e_greedy_action(self, a, episode):
-        eps = (1.0 / (episode + 1))
-        if np.random.rand() < eps:
-            return np.random.choice(range(len(Agent.actions)))
-        else:
-            return a
-
     def optimize(self):
         if len(self.memory) < self.batch_size:
             return
@@ -148,13 +142,14 @@ class Agent:
             self.optimizer.step()
 
     def run_episode(self):
+        AbstractAgent.run_episode(self)
         s = self.s0
         episode_number = len(self.rewards)
         self.rewards.append(.0)
         for j in range(self.episode_length):
             q_predicted = self._predict_q_policy(s)
             a = torch.argmax(q_predicted, 0).item()
-            a = self._e_greedy_action(a, episode_number)
+            a = self.select_action(a)
             s1, r, over = self.step(s, Agent.actions[a])
             if s != s1:
                 r -= self.step_cost
@@ -171,12 +166,13 @@ class Agent:
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
+
     torch.manual_seed(42)
     np.random.seed(42)
     env = Environment(world=MAPS["classic"], win_reward=5.0, death_reward=-10.0)
     agent = Agent(env=env, p=1.0, step_cost=0.2, episode_length=100, memory_capacity=1000)
     agent.print_policy()
-    for i in range(200):
+    for i in range(1000):
         agent.run_episode()
         if i % 10 == 0:
             print(f"Episode: {i}")

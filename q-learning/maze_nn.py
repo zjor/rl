@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 from torch import nn
-from maze import MAPS, Environment
+from maze import MAPS, Environment, AbstractAgent
 
 
 class Model(nn.Module):
@@ -21,11 +21,12 @@ class Model(nn.Module):
         return self.layers(x)
 
 
-class Agent:
+class Agent(AbstractAgent):
     actions = ['←', '→', '↑', '↓']
 
     def __init__(self, env, p=1.0, lr=0.8, y=0.95, step_cost=.0, living_cost=.0, episode_length=100, eps=0.5,
                  eps_decay=0.999):
+        AbstractAgent.__init__(self, eps, eps_decay)
         self.env = env
         self.lr = lr
         self.y = y
@@ -40,8 +41,6 @@ class Agent:
         }
         self.s0 = env.field.index('s')
         self.episode_length = episode_length
-        self.eps = eps
-        self.eps_decay = eps_decay
         self.rewards = []
         self.losses = []
         self.state_len = env.width * env.height
@@ -81,23 +80,14 @@ class Agent:
     def _predict_q(self, s):
         return self.nn.forward(self._encode_state(s))
 
-    def _e_greedy_action(self, a):
-        if np.random.rand() < self.eps:
-            random_a = a
-            while random_a == a:
-                random_a = np.random.choice(range(len(Agent.actions)))
-            return random_a
-        else:
-            return a
-
     def run_episode(self):
-        self.eps *= self.eps_decay
+        AbstractAgent.run_episode(self)
         s = self.s0
         self.rewards.append(.0)
         for j in range(self.episode_length):
             q_predicted = self._predict_q(s)
             a = torch.argmax(q_predicted, 0).item()
-            a = self._e_greedy_action(a)
+            a = self.select_action(a)
             s1, r, over = self.step(s, Agent.actions[a])
             if s != s1:
                 r -= self.step_cost
@@ -121,6 +111,7 @@ class Agent:
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
+
     torch.manual_seed(42)
     np.random.seed(42)
     env = Environment(world=MAPS["classic"], win_reward=5.0, death_reward=-10.0)
@@ -136,4 +127,3 @@ if __name__ == "__main__":
 
     plt.plot(agent.rewards)
     plt.show()
-
