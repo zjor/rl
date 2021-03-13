@@ -43,11 +43,11 @@ class Agent(AbstractAgent):
         self.state_len = env.width * env.height
         self.nn = Model(
             in_features=2,
-            hidden=[self.state_len, self.state_len],
+            hidden=[self.state_len],
             out_features=len(Agent.actions))
         self.target_nn = Model(
             in_features=2,
-            hidden=[self.state_len, self.state_len],
+            hidden=[self.state_len],
             out_features=len(Agent.actions))
         self.target_nn.load_state_dict(self.nn.state_dict())
         self.target_nn.eval()
