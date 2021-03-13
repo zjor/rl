@@ -116,10 +116,10 @@ if __name__ == "__main__":
 
     torch.manual_seed(42)
     np.random.seed(42)
-    env = Environment(world=MAPS["classic"], win_reward=5.0, death_reward=-10.0)
-    agent = Agent(env=env, p=1.0, step_cost=0.1, episode_length=100, memory_capacity=100)
+    env = Environment(world=MAPS["classic"], win_reward=5.0, death_reward=-5.0)
+    agent = Agent(env=env, p=1.0, step_cost=0.01, episode_length=100, memory_capacity=500)
     agent.print_policy()
-    num_episodes = 1000
+    num_episodes = 5000
     for i in range(num_episodes):
         agent.run_episode()
         if i % 100 == 0:
