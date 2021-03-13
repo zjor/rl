@@ -1,55 +1,16 @@
 """
 DQL Experience replay
 """
-from collections import namedtuple
 
-import random
-import torch
 import numpy as np
-from torch import nn
+import torch
+from dqn import Model, ReplayMemory
 from maze import MAPS, Environment, AbstractAgent
+from torch import nn
 
 
-class Model(nn.Module):
-    def __init__(self, in_features, hidden, out_features):
-        super().__init__()
-        layer_sizes = [in_features] + hidden
-        layers = []
-
-        for i in range(len(layer_sizes) - 1):
-            layers.append(nn.Linear(layer_sizes[i], layer_sizes[i + 1]))
-            layers.append(nn.ReLU(inplace=True))
-
-        layers.append(nn.Linear(layer_sizes[-1], out_features))
-        self.layers = nn.Sequential(*layers)
-
-    def forward(self, x):
-        return self.layers(x)
-
-
-Transition = namedtuple('Transition',
-                        ('state', 'action', 'next_state', 'reward'))
-
-
-class ReplayMemory(object):
-
-    def __init__(self, capacity):
-        self.capacity = capacity
-        self.memory = []
-        self.position = 0
-
-    def push(self, *args):
-        """Saves a transition."""
-        if len(self.memory) < self.capacity:
-            self.memory.append(None)
-        self.memory[self.position] = Transition(*args)
-        self.position = (self.position + 1) % self.capacity
-
-    def sample(self, batch_size):
-        return random.sample(self.memory, batch_size)
-
-    def __len__(self):
-        return len(self.memory)
+def avg(a, n):
+    return np.convolve(a, np.ones(n) / n, mode='valid')[:-1]
 
 
 class Agent(AbstractAgent):
@@ -158,14 +119,16 @@ if __name__ == "__main__":
     env = Environment(world=MAPS["classic"], win_reward=5.0, death_reward=-10.0)
     agent = Agent(env=env, p=1.0, step_cost=0.1, episode_length=100, memory_capacity=100)
     agent.print_policy()
-    for i in range(1000):
+    num_episodes = 1000
+    for i in range(num_episodes):
         agent.run_episode()
-        if i % 10 == 0:
+        if i % 100 == 0:
             print(f"Episode: {i}")
             print(agent.rewards[-1])
             print(agent.losses[-1].detach().numpy())
 
     agent.print_policy()
+
+    plt.plot(avg(agent.rewards, num_episodes // 10))
     plt.grid(True)
-    plt.plot(agent.rewards)
     plt.show()

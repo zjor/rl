@@ -3,9 +3,10 @@
 This repo contains my experiments with RL algorithms
 
 ## Todo
-- Solve maze with DQL
+- Solve maze with DQN, represent state as (x, y), use hidden layers
+- Dynamic maze with an agent
 - Solve tic-tac-toe with Q-tables
-- Solve tic-tac-toe with DQL
+- Solve tic-tac-toe with DQN
 - Solve continuous time physics problem
 - Solve lunar-lender
 - Solve inverted pendulum

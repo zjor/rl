@@ -2,6 +2,10 @@ import numpy as np
 from maze import MAPS, Environment, AbstractAgent
 
 
+def avg(a, n):
+    return np.convolve(a, np.ones(n) / n, mode='valid')[:-1]
+
+
 class Agent(AbstractAgent):
     actions = ['←', '→', '↑', '↓']
 
@@ -70,7 +74,7 @@ if __name__ == "__main__":
     env = Environment(world=MAPS["classic"], win_reward=5.0, death_reward=-5.0)
     agent = Agent(env=env, p=1.0, step_cost=0.01, episode_length=100)
 
-    num_episodes = 1000
+    num_episodes = 3000
     for i in range(num_episodes):
         agent.run_episode()
 
@@ -78,5 +82,6 @@ if __name__ == "__main__":
     print()
     agent.print_policy()
 
-    plt.plot(agent.rewards)
+    plt.plot(avg(agent.rewards, num_episodes // 10))
+    plt.grid(True)
     plt.show()
