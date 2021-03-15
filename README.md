@@ -10,6 +10,7 @@ This repo contains my experiments with RL algorithms
 - Solve continuous time physics problem
 - Solve lunar-lender
 - Solve inverted pendulum
+- train NN to predict simulation (use it as a model later)
 
 ## References
 - [RL tutorial](https://medium.com/emergent-future/simple-reinforcement-learning-with-tensorflow-part-0-q-learning-with-tables-and-neural-networks-d195264329d0)
