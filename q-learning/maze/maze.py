@@ -33,12 +33,12 @@ MAPS = {
 }
 
 
-# TODO: move step logic to the environment
 class Environment:
     def __init__(self, world, win_reward=1.0, death_reward=-1.0):
         self.field = ''.join(world["field"])
         self.height = len(world["field"])
         self.width = world["width"]
+        self.length = len(self.field)
         self.win_reward = win_reward
         self.death_reward = death_reward
 

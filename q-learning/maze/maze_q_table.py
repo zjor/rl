@@ -9,7 +9,7 @@ def avg(a, n):
 class Agent(AbstractAgent):
     actions = ['←', '→', '↑', '↓']
 
-    def __init__(self, env, p=1.0, lr=0.8, y=0.95, step_cost=.0, living_cost=.0, episode_length=100, eps=0.5,
+    def __init__(self, env, lr=0.8, y=0.95, step_cost=.0, living_cost=.0, episode_length=100, eps=0.5,
                  eps_decay=0.999):
         AbstractAgent.__init__(self, eps, eps_decay)
         self.env = env
@@ -17,24 +17,12 @@ class Agent(AbstractAgent):
         self.y = y
         self.step_cost = step_cost
         self.living_cost = living_cost
-        q = (1.0 - p) / 2
-        self.stochastic_actions = {
-            '←': [[0, 2, 3], [p, q, q]],
-            '→': [[1, 2, 3], [p, q, q]],
-            '↑': [[2, 0, 1], [p, q, q]],
-            '↓': [[3, 0, 1], [p, q, q]]
-        }
         self.Q = np.zeros((env.width * env.height, len(Agent.actions)))
         self.s0 = env.field.index('s')
         self.episode_length = episode_length
         self.rewards = []
 
     def step(self, state, action):
-        # simulating Markov Process, desired action happens with probability p
-        # but with the probability (1-p) / 2 the agent goes sideways
-        sa = self.stochastic_actions[action]
-        mp_action = np.random.choice(sa[0], p=sa[1])
-        action = Agent.actions[mp_action]
         return self.env.step(state, action)
 
     def print_policy(self):
@@ -72,16 +60,21 @@ if __name__ == "__main__":
 
     np.random.seed(42)
     env = Environment(world=MAPS["classic"], win_reward=5.0, death_reward=-5.0)
-    agent = Agent(env=env, p=1.0, step_cost=0.01, episode_length=100)
+    agent = Agent(env=env, step_cost=0.4, episode_length=100)
 
     num_episodes = 3000
     for i in range(num_episodes):
         agent.run_episode()
 
-    env.print_game()
-    print()
-    agent.print_policy()
+    # env.print_game()
+    # print()
+    # agent.print_policy()
+    #
+    # plt.plot(avg(agent.rewards, num_episodes // 10))
+    # plt.grid(True)
+    # plt.show()
+    import pandas as pd
 
-    plt.plot(avg(agent.rewards, num_episodes // 10))
-    plt.grid(True)
-    plt.show()
+    df = pd.DataFrame(agent.Q)
+    df.to_csv('q_table.csv', header=False, index=False)
+

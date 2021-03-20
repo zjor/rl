@@ -17,7 +17,7 @@ class Agent(AbstractAgent):
     actions = ['←', '→', '↑', '↓']
 
     def __init__(self, env, lr=0.8, y=0.95, step_cost=.0, living_cost=.0, episode_length=100,
-                 memory_capacity=100, batch_size=50, eps=0.5, eps_decay=0.999):
+                 memory_capacity=100, batch_size=25, eps=0.5, eps_decay=0.999):
         AbstractAgent.__init__(self, eps, eps_decay)
         self.env = env
         self.lr = lr
@@ -31,12 +31,12 @@ class Agent(AbstractAgent):
         self.state_len = env.width * env.height
 
         self.nn = Model(
-            in_features=self.state_len,
-            hidden=[self.state_len],
+            in_features=2,
+            hidden=[self.state_len, self.state_len],
             out_features=len(Agent.actions))
 
         self.criterion = nn.MSELoss()
-        self.optimizer = torch.optim.Adam(self.nn.parameters(), lr=0.05)
+        self.optimizer = torch.optim.Adam(self.nn.parameters(), lr=0.01)
         self.memory = ReplayMemory(memory_capacity)
         self.batch_size = batch_size
 
@@ -57,12 +57,15 @@ class Agent(AbstractAgent):
             print()
 
     def _encode_state(self, s):
-        z = np.zeros(self.state_len)
-        z[s] = 1
-        return torch.tensor(z, dtype=torch.float)
+        # z = np.zeros(self.state_len)
+        # z[s] = 1
+        # return torch.tensor(z, dtype=torch.float)
+        w = self.env.width
+        x, y = s % w, s // w
+        return torch.tensor([x, y], dtype=torch.float)
 
     def _predict_q(self, s):
-        return self.nn.forward(self._encode_state(s))
+        return self.nn(self._encode_state(s))
 
     def optimize(self):
         if len(self.memory) < self.batch_size:
@@ -109,7 +112,7 @@ if __name__ == "__main__":
     torch.manual_seed(42)
     np.random.seed(42)
     env = Environment(world=MAPS["classic"], win_reward=5.0, death_reward=-5.0)
-    agent = Agent(env=env, step_cost=0.01, episode_length=100, memory_capacity=10000)
+    agent = Agent(env=env, step_cost=0.01, episode_length=100, memory_capacity=5000)
     agent.print_policy()
     num_episodes = 1000
     for i in range(num_episodes):

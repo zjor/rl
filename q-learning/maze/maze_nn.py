@@ -1,7 +1,5 @@
-import torch
 import numpy as np
-from torch import nn
-from dqn import Model
+import tensorflow as tf
 from maze import MAPS, Environment, AbstractAgent
 
 
@@ -12,7 +10,7 @@ def avg(a, n):
 class Agent(AbstractAgent):
     actions = ['←', '→', '↑', '↓']
 
-    def __init__(self, env, p=1.0, lr=0.8, y=0.95, step_cost=.0, living_cost=.0, episode_length=100, eps=0.5,
+    def __init__(self, env, lr=0.8, y=0.95, step_cost=.0, living_cost=.0, episode_length=100, eps=0.5,
                  eps_decay=0.999):
         AbstractAgent.__init__(self, eps, eps_decay)
         self.env = env
@@ -20,31 +18,20 @@ class Agent(AbstractAgent):
         self.y = y
         self.step_cost = step_cost
         self.living_cost = living_cost
-        q = (1.0 - p) / 2
-        self.stochastic_actions = {
-            '←': [[0, 2, 3], [p, q, q]],
-            '→': [[1, 2, 3], [p, q, q]],
-            '↑': [[2, 0, 1], [p, q, q]],
-            '↓': [[3, 0, 1], [p, q, q]]
-        }
         self.s0 = env.field.index('s')
         self.episode_length = episode_length
         self.rewards = []
         self.losses = []
-        self.state_len = env.width * env.height
-        self.nn = Model(
-            in_features=self.state_len,
-            hidden=[],
-            out_features=len(Agent.actions))
-        self.criterion = nn.MSELoss()
-        self.optimizer = torch.optim.Adam(self.nn.parameters(), lr=0.05)
+        self.model = tf.keras.Sequential([
+            tf.keras.layers.Dense(units=env.length, input_shape=[env.length], activation='linear'),
+            tf.keras.layers.Dense(units=4)
+        ])
+        self.model.compile(
+            loss='mean_squared_error',
+            optimizer=tf.keras.optimizers.Adam(0.1)
+        )
 
     def step(self, state, action):
-        # simulating Markov Process, desired action happens with probability p
-        # but with the probability (1-p) / 2 the agent goes sideways
-        sa = self.stochastic_actions[action]
-        mp_action = np.random.choice(sa[0], p=sa[1])
-        action = Agent.actions[mp_action]
         return self.env.step(state, action)
 
     def print_policy(self):
@@ -55,41 +42,41 @@ class Agent(AbstractAgent):
                 if not (cell == '.' or cell == 's'):
                     print(cell, end='')
                     continue
-                q_predicted = self._predict_q(s)
-                a = torch.argmax(q_predicted, 0).item()
+                q_predicted = self.predict_q(s)
+                a = np.argmax(q_predicted)
                 print(Agent.actions[a], end='')
             print()
 
     def _encode_state(self, s):
-        z = np.zeros(self.state_len)
-        z[s] = 1
-        return torch.tensor(z, dtype=torch.float)
+        z = np.zeros(self.env.length)
+        z[s] = 1.0
+        return np.array([z])
 
-    def _predict_q(self, s):
-        return self.nn.forward(self._encode_state(s))
+    def predict_q(self, s):
+        return self.model.predict(self._encode_state(s))[0]
 
     def run_episode(self):
         AbstractAgent.run_episode(self)
         s = self.s0
         self.rewards.append(.0)
         for j in range(self.episode_length):
-            q_predicted = self._predict_q(s)
-            a = torch.argmax(q_predicted, 0).item()
+            q_predicted = self.predict_q(s)
+            a = np.argmax(q_predicted)
             a = self.select_action(a)
             s1, r, over = self.step(s, Agent.actions[a])
             if s != s1:
                 r -= self.step_cost
             r -= self.living_cost
 
-            q_target = q_predicted.clone().detach()
-            q_target[a] = r + self.y * self._predict_q(s1).max().item()
+            q_target = q_predicted
+            q_target[a] = r + self.y * self.predict_q(s1).max()
 
-            loss = self.criterion(q_predicted, q_target)
-            self.losses.append(loss)
-
-            self.optimizer.zero_grad()
-            loss.backward()
-            self.optimizer.step()
+            history = self.model.fit(
+                x=self._encode_state(s),
+                y=np.array([q_target]),
+                epochs=1,
+                verbose=False)
+            self.losses.append(history.history["loss"][-1])
 
             s = s1
             self.rewards[-1] += r
@@ -100,18 +87,17 @@ class Agent(AbstractAgent):
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
-    torch.manual_seed(42)
     np.random.seed(42)
     env = Environment(world=MAPS["classic"], win_reward=5.0, death_reward=-5.0)
-    agent = Agent(env=env, p=1.0, step_cost=0.01, episode_length=100)
+    agent = Agent(env=env, step_cost=0.01, episode_length=100)
     agent.print_policy()
 
-    num_episodes = 5000
+    num_episodes = 50
     for i in range(num_episodes):
         agent.run_episode()
-        if i % 100 == 0:
-            print(agent.rewards[-1])
-            print(agent.losses[-1].detach().numpy())
+        if i % 10 == 0:
+            print(f"Rewards: {agent.rewards[-1]}")
+            print(f"Losses: {agent.losses[-1]}")
 
     agent.print_policy()
 

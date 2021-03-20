@@ -22,3 +22,7 @@ This repo contains my experiments with RL algorithms
 
 ## Publications
 - [Q-table example](https://www.kaggle.com/zjor86/rl-with-q-table-example) 
+
+## Routine
+
+- Update conda environment: `conda env update --file environment.yml  --prune`
