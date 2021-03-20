@@ -10,7 +10,7 @@ def avg(a, n):
 class Agent(AbstractAgent):
     actions = ['←', '→', '↑', '↓']
 
-    def __init__(self, env, lr=0.8, y=0.95, step_cost=.0, living_cost=.0, episode_length=100, eps=0.5,
+    def __init__(self, env, model, lr=0.8, y=0.95, step_cost=.0, living_cost=.0, episode_length=100, eps=0.5,
                  eps_decay=0.999):
         AbstractAgent.__init__(self, eps, eps_decay)
         self.env = env
@@ -22,14 +22,7 @@ class Agent(AbstractAgent):
         self.episode_length = episode_length
         self.rewards = []
         self.losses = []
-        self.model = tf.keras.Sequential([
-            tf.keras.layers.Dense(units=env.length, input_shape=[env.length], activation='linear'),
-            tf.keras.layers.Dense(units=4)
-        ])
-        self.model.compile(
-            loss='mean_squared_error',
-            optimizer=tf.keras.optimizers.Adam(0.1)
-        )
+        self.model = model
 
     def step(self, state, action):
         return self.env.step(state, action)
@@ -88,16 +81,24 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
     np.random.seed(42)
+    tf.random.set_seed(42)
     env = Environment(world=MAPS["classic"], win_reward=5.0, death_reward=-5.0)
-    agent = Agent(env=env, step_cost=0.01, episode_length=100)
+    model = tf.keras.Sequential([
+        tf.keras.layers.Dense(units=env.length, input_shape=[env.length], activation='linear'),
+        tf.keras.layers.Dense(units=4)
+    ])
+    model.compile(
+        loss='mean_squared_error',
+        optimizer=tf.keras.optimizers.Adam(0.2)
+    )
+    agent = Agent(env=env, model=model, step_cost=0.01, episode_length=100)
     agent.print_policy()
 
     num_episodes = 50
     for i in range(num_episodes):
         agent.run_episode()
         if i % 10 == 0:
-            print(f"Rewards: {agent.rewards[-1]}")
-            print(f"Losses: {agent.losses[-1]}")
+            print(f"[Episode: {i}] rewards: {agent.rewards[-1]:.4f}; losses: {agent.losses[-1]:.4f}")
 
     agent.print_policy()
 
